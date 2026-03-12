@@ -27,8 +27,11 @@ st.markdown("""
 if 'questions' not in st.session_state:
     st.session_state.questions = [
         {"q": "En quelle année la guerre a-t-elle commencé ?", "options": ["1912", "1914", "1916", "1918"], "a": "1914"},
+        {"q": "Quel événement a déclenché la guerre ?", "options": ["L'invasion de la Pologne", "L'assassinat de l'archiduc François-Ferdinand", "Le naufrage du Titanic", "La bataille de Verdun"], "a": "L'assassinat de l'archiduc François-Ferdinand"},
+        {"q": "Quel pays ne faisait PAS partie de la Triple-Entente ?", "options": ["La France", "Le Royaume-Uni", "L'Allemagne", "La Russie"], "a": "L'Allemagne"},
         {"q": "Qui était le chef de l'armée française ?", "options": ["Foch", "Napoléon", "De Gaulle", "Joffre"], "a": "Joffre"}
     ]
+
 
 # متغيرات الحالة (Session State)
 if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
