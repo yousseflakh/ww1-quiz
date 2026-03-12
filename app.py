@@ -2,91 +2,120 @@ import streamlit as st
 import time
 import random
 
-# إعدادات الصفحة
-st.set_page_config(page_title="Quiz Grand Guerre", page_icon="🎖️")
+# إعداد الصفحة
+st.set_page_config(page_title="Quiz WW1", page_icon="🎖️")
 
-# ستايل CSS مخصص باش تبان اللعبة زوينة
+# ستايل CSS باش نلونوا الأزرار ونخليوها تشبه للتطبيق اللي شفتي
 st.markdown("""
     <style>
     .stButton>button {
         width: 100%;
         border-radius: 10px;
-        height: 3em;
-        background-color: #34495e;
-        color: white;
+        height: 3.5em;
         font-size: 18px;
-    }
-    .stButton>button:hover {
-        background-color: #f39c12;
-        color: white;
+        font-weight: bold;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# قاعدة البيانات (الأسئلة)
+# --- إدارة الحالة (Session State) ---
+# هاد الجزء كيعوض __init__ باش البرنامج يعقل على المعلومات
 if 'questions' not in st.session_state:
     st.session_state.questions = [
-        {"q": "En quelle année la guerre a-t-elle commencé ?", "options": ["1912", "1914", "1916", "1918"], "a": "1914"},
-        {"q": "Quel événement a déclenché la guerre ?", "options": ["L'invasion de la Pologne", "L'assassinat de l'archiduc François-Ferdinand", "Le naufrage du Titanic", "La bataille de Verdun"], "a": "L'assassinat de l'archiduc François-Ferdinand"},
-        {"q": "Quel pays ne faisait PAS partie de la Triple-Entente ?", "options": ["La France", "Le Royaume-Uni", "L'Allemagne", "La Russie"], "a": "L'Allemagne"},
-        {"q": "Qui était le chef de l'armée française ?", "options": ["Foch", "Napoléon", "De Gaulle", "Joffre"], "a": "Joffre"}
+        {"question": "En quelle année la Première Guerre mondiale a-t-elle commencé ?", "options": ["1912", "1914", "1916", "1918"], "answer": "1914"},
+        {"question": "Quel événement a déclenché la guerre ?", "options": ["L'invasion de la Pologne", "L'assassinat de l'archiduc François-Ferdinand", "Le naufrage du Titanic", "La bataille de Verdun"], "answer": "L'assassinat de l'archiduc François-Ferdinand"},
+        {"question": "Quel pays ne faisait PAS partie de la Triple-Entente ?", "options": ["La France", "Le Royaume-Uni", "L'Allemagne", "La Russie"], "answer": "L'Allemagne"},
+        {"question": "Comment appelait-on les soldats français ?", "options": ["Les Gars", "Les Poilus", "Les Bleus", "Les Braves"], "answer": "Les Poilus"},
+        {"question": "Quand l'armistice a-t-il été signé ?", "options": ["11 novembre 1918", "14 juillet 1919", "8 mai 1945", "1er septembre 1914"], "answer": "11 novembre 1918"}
     ]
 
-
-# متغيرات الحالة (Session State)
-if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
+if 'current_question' not in st.session_state: st.session_state.current_question = 0
 if 'score' not in st.session_state: st.session_state.score = 0
-if 'answered' not in st.session_state: st.session_state.answered = False
+if 'ans_status' not in st.session_state: st.session_state.ans_status = None # None, 'waiting', or 'done'
+if 'selected_option' not in st.session_state: st.session_state.selected_option = None
 
-# العنوان
-st.title("🎖️ Quiz: La Première Guerre Mondiale")
-st.write("---")
-
-# منطقة إضافة سؤال (Sidebar)
+# --- بوطون إضافة سؤال (Sidebar) ---
 with st.sidebar:
-    st.header("⚙️ Administration")
-    with st.expander("Ajouter une question"):
-        new_q = st.text_input("Question")
-        new_a = st.text_input("Réponse correcte")
-        new_o = st.text_area("3 autres options (séparées par virgule)").split(',')
-        if st.button("Enregistrer"):
-            opts = [new_a] + [o.strip() for o in new_o]
-            st.session_state.questions.append({"q": new_q, "options": opts, "a": new_a})
-            st.success("Ajouté !")
+    st.header("➕ Ajouter une Question")
+    with st.form("add_q_form", clear_on_submit=True):
+        q_text = st.text_input("La question :")
+        ans_text = st.text_input("Réponse correcte :")
+        opt2 = st.text_input("Option fausse 1 :")
+        opt3 = st.text_input("Option fausse 2 :")
+        opt4 = st.text_input("Option fausse 3 :")
+        submit = st.form_submit_button("Enregistrer")
+        
+        if submit and q_text and ans_text:
+            new_q = {
+                "question": q_text,
+                "options": [ans_text, opt2, opt3, opt4],
+                "answer": ans_text
+            }
+            st.session_state.questions.append(new_q)
+            st.success("Question ajoutée !")
 
-# عرض السؤال الحالي
-if st.session_state.current_idx < len(st.session_state.questions):
-    item = st.session_state.questions[st.session_state.current_idx]
-    st.subheader(f"Question {st.session_state.current_idx + 1}: {item['q']}")
+# --- عرض اللعبة ---
+st.title("🎖️ Quiz: La Première Guerre Mondiale")
+
+if st.session_state.current_question < len(st.session_state.questions):
+    q_data = st.session_state.questions[st.session_state.current_question]
     
-    # خلط الاختيارات مرة واحدة
-    if 'current_opts' not in st.session_state or st.session_state.answered == False:
-        opts = item['options']
-        random.shuffle(opts)
-        st.session_state.current_opts = opts
+    st.write(f"### Question {st.session_state.current_question + 1}:")
+    st.info(q_data['question'])
 
-    # عرض الأزرار
-    for opt in st.session_state.current_opts:
-        if st.button(opt, key=opt):
-            st.session_state.answered = True
-            with st.spinner('Vérification...'):
-                time.sleep(1.5) # وقت التشويق اللي طلبتي
-                if opt == item['a']:
-                    st.success(f"Correct ! ✅")
-                    st.session_state.score += 1
-                else:
-                    st.error(f"Faux ! ❌ La réponse était : {item['a']}")
-            
-            # زر المتابعة
-            if st.button("Suivant ➔"):
-                st.session_state.current_idx += 1
-                st.session_state.answered = False
+    # خلط الاختيارات وتثبيتها باش ما يتبدلوش ملي نكليكي
+    if f"opts_{st.session_state.current_question}" not in st.session_state:
+        shuffled = list(q_data['options'])
+        random.shuffle(shuffled)
+        st.session_state[f"opts_{st.session_state.current_question}"] = shuffled
+    
+    options = st.session_state[f"opts_{st.session_state.current_question}"]
+
+    # عرض أزرار الأجوبة
+    for opt in options:
+        # تحديد اللون بناءً على الحالة (التشويق)
+        if st.session_state.ans_status == 'waiting' and st.session_state.selected_option == opt:
+            button_type = "secondary" # برتقالي/رمادي للتشويق
+            st.button(f"⏳ {opt}", disabled=True)
+        elif st.session_state.ans_status == 'done':
+            if opt == q_data['answer']:
+                st.button(f"✅ {opt}", key=f"correct_{opt}", type="primary") # أخضر
+            elif opt == st.session_state.selected_option:
+                st.button(f"❌ {opt}", key=f"wrong_{opt}") # أحمر (تلقائي)
+            else:
+                st.button(opt, disabled=True, key=f"dis_{opt}")
+        else:
+            # الحالة العادية قبل الكليك
+            if st.button(opt, key=f"opt_{opt}"):
+                st.session_state.selected_option = opt
+                st.session_state.ans_status = 'waiting'
                 st.rerun()
 
+    # محاكاة التشويق (Suspense)
+    if st.session_state.ans_status == 'waiting':
+        time.sleep(1.5) # المدة اللي طلبتي
+        if st.session_state.selected_option == q_data['answer']:
+            st.session_state.score += 1
+        st.session_state.ans_status = 'done'
+        st.rerun()
+
+    # زر Suivant
+    if st.session_state.ans_status == 'done':
+        st.write("---")
+        if st.button("Suivant ➔", type="primary"):
+            st.session_state.current_question += 1
+            st.session_state.ans_status = None
+            st.session_state.selected_option = None
+            st.rerun()
+
 else:
+    # النهاية
     st.balloons()
-    st.success(f"Fin du Quiz ! Votre score : {st.session_state.score}/{len(st.session_state.questions)}")
+    st.success(f"### Fin du Quiz! \n\n **Votre score final est : {st.session_state.score}/{len(st.session_state.questions)}**")
     if st.button("Recommencer"):
-        st.session_state.current_idx = 0
+        st.session_state.current_question = 0
         st.session_state.score = 0
         st.rerun()
+
+# الرصيد (Score) لتحت
+st.sidebar.write(f"## 🏆 Score: {st.session_state.score}")
